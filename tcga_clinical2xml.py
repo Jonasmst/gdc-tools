@@ -103,6 +103,7 @@ class File2Case(object):
                 os.makedirs(os.path.dirname(self.output_dir))
             except OSError:
                 if not os.path.isdir(os.path.dirname(self.output_dir)):
+                    print "ERROR: Could not create output directory"
                     raise
 
     def __init__(self):
