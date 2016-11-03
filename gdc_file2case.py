@@ -50,6 +50,7 @@ class File2Case(object):
 
         # Check for matching results
         if len(data["hits"]) == 0:
+            print "No results from API"
             return
 
         # Check for provided BAM files in the results
