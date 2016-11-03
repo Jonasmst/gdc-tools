@@ -20,30 +20,29 @@ class File2Case(object):
         params = {"ids": self.file_ids}
         r = requests.post(DATA_ENDPOINT, data=json.dumps(params), headers={"content-type":"application/json"})
 
-        outfilename = os.path.join(self.output_dir, "clinical2xml.tar.gz")
+        # outfilename = os.path.join(self.output_dir, "clinical2xml.tar.gz")
         if r.status_code == 200:
-            # Special handling if only 1 file ID
-            if len(self.file_ids) == 1:
-                # Response will only be a single non-compressed XML-file. Fetch filename from response
-                import re
-                disp = r.headers["content-disposition"]
-                fname = re.findall("filename=(.+)", disp)[0]
-                dirname = os.path.join(self.output_dir, self.file_ids[0])
-                # Create directory if it doesn't exist
-                try:
-                    print "Creating output directory %s" % dirname
-                    os.makedirs(dirname)
-                except OSError:
-                    if not os.path.isdir(dirname):
-                        raise
-                # Complete path to output file
-                outfilename = os.path.join(dirname, fname)
-            with open(outfilename, "wb") as fd:
+            # Get filename
+            import re
+            disp = r.headers["content-disposition"]
+            fname = re.findall("filename=(.+)", disp)[0]
+
+            # Create directory if it doesn't exist
+            try:
+                print "Creating output directory %s" % self.output_dir
+                os.makedirs(self.output_dir)
+            except OSError:
+                if not os.path.exists(self.output_dir):
+                    raise
+
+            # Write data to file
+            output_filename = os.path.join(self.output_dir, fname)
+            with open(output_filename, "wb") as fd:
                 for chunk in r.iter_content(10):
                     fd.write(chunk)
-                print "File written to %s" % outfilename
+                print "File written to %s" % output_filename
         else:
-            print "ERROR: Something went wrong. Got HTTP status code %s" % r.status_code
+            print "ERROR: Something went wrong. Got HTTP status code %s. Server says:\n%s" % (r.status_code, r.text)
 
 
     def handle_arguments(self):
