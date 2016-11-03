@@ -25,5 +25,3 @@ For more info about the parameters, run the script with the ```--help``` flag:
 
 ```python gdc_specs2manifest.py --help```
 
-## gdc_file2case
-
