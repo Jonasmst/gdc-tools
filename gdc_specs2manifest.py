@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 import argparse
 import sys
@@ -52,6 +53,10 @@ choices = {
         "BCR XML",
         "MAF",
         "XLSX"
+    ],
+    "vital_status": [
+        "alive",
+        "dead"
     ]
 }
 
@@ -63,8 +68,8 @@ MANIFEST_ENDPOINT = "https://gdc-api.nci.nih.gov/manifest"
 class MyParser(argparse.ArgumentParser):
 
     def error(self, message):
-        sys.stderr.write("ERROR: %s\n" % message)
         self.print_help()
+        sys.stderr.write("ERROR: %s\n" % message)
         sys.exit(2)
 
     def print_help(self):
@@ -103,7 +108,13 @@ class MyParser(argparse.ArgumentParser):
         print "     directory/manifest.tsv. Directories will be"
         print "     created and existing files will be over-"
         print "     written."
-        print ""
+        print "--vital-status"
+        print "     Patient vital status. Choices: 'dead' or 'alive'."
+        print "     If not set, results include both."
+        print "--days-to-death-min"
+        print "     Minimum number of days from diagnosis to death."
+        print "--days-to-death-max"
+        print "     Maximum number of days from diagnosis to death"
         print "SUPPORTED CHOICES:"
         for term in sorted(choices.keys()):
             print "--%s:" % term.replace("_", "-")
@@ -119,8 +130,12 @@ parser.add_argument("--min-filesize", help="Minimum filesize in bytes. E.g. 5000
 parser.add_argument("--exclude-files", help="A list of file names to exclude from manifest, e.g. if they meet the search criteria, but are already downloaded. Comma-separated list of file names or path to a TXT-file containing one filename per line", required=False)
 parser.add_argument("--num-results", help="Maximum number of results. Default: 100", default="100")
 parser.add_argument("--output-file", help="File to write manifest to. Default: Current directory/manifest.tsv", default=os.path.join(os.getcwd(), "manifest.tsv"))
+parser.add_argument("--vital-status", help="Limit search to a certani vital status of patient. Dead or alive. If not set, results include both.", choices=["dead", "alive"], required=False)
+parser.add_argument("--days-to-death-min", help="Minimum days to death.", required=False)
+parser.add_argument("--days-to-death-max", help="Maximum days to death.", required=False)
 args = vars(parser.parse_args())
 
+# Print arguments to user
 print "INFO: Provided arguments:"
 for key, value in args.items():
     print "%s --> %s" % (key, value)
@@ -149,7 +164,7 @@ if args["data_format"] not in choices["data_format"]:
     print "ERROR: Input provided: %s" % args["data_format"]
     sys.exit()
 
-# Get provided arguments
+# Get files to exclude from args
 exclude_files = args.pop("exclude_files")
 
 # Handle excluded files
@@ -188,6 +203,28 @@ if exclude_files:
     exclude_filter = {"op":"exclude","content":{"field": "file_name", "value":exclude_files}}
     filters["content"].append(exclude_filter)
 
+# Filter on vital status, if specified
+if args["vital_status"]:
+    vital_filter = {"op":"=","content":{"field": "cases.diagnoses.vital_status", "value": args["vital_status"]}}
+    # vital_filter = {"op":"=","content":{"field": "cases.diagnoses.vital_status", "value": args["vital_status"]}}
+    filters["content"].append(vital_filter)
+
+# Filter on days to death, if specified
+# if args["days_to_death_min"] and args["days_to_death_max"]:
+    # dod_both_filter = {"op":"and", "content":[
+        # {"op":"<=", "content":{"field": "cases.diagnoses.days_to_death", "value":[args["days_to_death_min"]]}},
+        # {"op":">=", "content":{"field": "cases.diagnoses.days_to_death", "value":[args["days_to_death_max"]]}}
+    # ]}
+    # filters["content"].append(dod_both_filter)
+if args["days_to_death_min"]:
+    dod_min_filter = {"op":">=", "content":{"field": "cases.diagnoses.days_to_death", "value":[args["days_to_death_min"]]}}
+    filters["content"].append(dod_min_filter)
+if args["days_to_death_max"]:
+    dod_max_filter = {"op":"<=", "content":{"field": "cases.diagnoses.days_to_death", "value":[args["days_to_death_max"]]}}
+    filters["content"].append(dod_max_filter)
+
+# print json.dumps(filters, indent=4)
+
 # Perform GET request
 params = {
     "filters": json.dumps(filters),
@@ -206,6 +243,9 @@ if not r.status_code == 200:
     sys.exit()
 
 data = r.json()["data"]
+if len(data["hits"]) == 0:
+    print "No files matching the query. Exiting."
+    sys.exit()
 file_ids = []
 print "INFO: File list:"
 for hit in data["hits"]:
