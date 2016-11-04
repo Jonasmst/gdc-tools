@@ -16,6 +16,9 @@ Reads a set of params and queries the API for a [manifest] (https://gdc-docs.nci
 * **min-filesize** - The minimum size of resulting files.
 * **exclude-files** - Exclude certain file names (e.g. if they've already been downloaded).
 * **num-results** - Limit the number of results.
+* **vital-status** - Filter on patient vital status. Dead or alive.
+* **days-to-death-min** - Minimum number of days from diagnosis to death.
+* **days-to-death-max** - Maximum number of days from diagnosis to death.
 
 ### Usage
 `python gdc_specs2manifest.py --data-format <FORMAT> --experimental-strategy <STRATEGY> --primary-site <SITE>`
